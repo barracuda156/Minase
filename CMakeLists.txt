@@ -36,9 +36,14 @@ ENDIF()
 
 SET(CMAKE_INCLUDE_CURRENT_DIR ON)
 SET(CMAKE_CXX_STANDARD 11)
-SET(CMAKE_CXX_FLAGS "-fPIC -Wall")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall")
 SET(CMAKE_CXX_FLAGS_DEBUG "-g -pg")
-SET(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -mtune=native -march=native -mfpmath=both")
+IF(CMAKE_SYSTEM_PROCESSOR MATCHES "ppc|power")
+  SET(NATIVE_OPTFLAGS "-mcpu=native -maltivec")
+ELSE()
+  SET(NATIVE_OPTFLAGS "-march=native -mfpmath=both")
+ENDIF()
+SET(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -mtune=native ${NATIVE_OPTFLAGS}")
 
 ADD_EXECUTABLE(minase main.cpp termbox/termbox.c termbox/utf8.c)
 INCLUDE_DIRECTORIES(
