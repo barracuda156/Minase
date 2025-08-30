@@ -13,7 +13,9 @@
 #include <memory>
 #include <array>
 
+#ifdef __linux__
 #include <linux/fs.h>
+#endif
 #include <sys/syscall.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -45,6 +47,14 @@
 #include "TermboxUtil.hpp"
 #include "help.hpp"
 #include "icons.hpp"
+
+#ifdef __APPLE__
+#define st_mtim st_mtimespec
+#endif
+
+#ifndef ulong
+typedef unsigned long ulong;
+#endif
 
 const static int TAB_MAX = 4;
 static const char* const TMP_FILENAME = "/tmp/minase_tmp";
@@ -2261,8 +2271,19 @@ public:
     auto fd = open(path.c_str(), O_RDONLY | O_DIRECTORY);
     if(fd == -1) return false;
 
+#ifdef __linux__
     int result = 0;
     result = syscall(SYS_renameat2, fd, src.c_str(), fd, dst.c_str(), RENAME_NOREPLACE);
+#else
+    struct stat st;
+    if (fstatat(fd, dst.c_str(), &st, 0) == 0) {
+        close(fd);
+        addLogMessage("Can't rename file/dir (destination exists): " + path + src + " -> " + path + dst);
+        return false;
+    }
+
+    int result = renameat(fd, src.c_str(), fd, dst.c_str());
+#endif
     close(fd);
 
     startTask();
@@ -4294,9 +4315,19 @@ int main(int argc, char **argv)
   }
 
   if(path == "") {
+#ifdef __linux__
     char* currentPath = get_current_dir_name();
     path = std::string(currentPath) + "/";
     free(currentPath);
+#else
+    char* currentPath = getcwd(NULL, 0);
+    if (currentPath != NULL) {
+        path = std::string(currentPath) + "/";
+        free(currentPath);
+    } else {
+        path = "./";
+    }
+#endif
   }
 
   Minase::PickerMode mode = Minase::PICKER_NONE;
